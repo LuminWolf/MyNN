@@ -1,5 +1,6 @@
 import time
 import random
+import copy
 
 import numpy as np
 import matplotlib.pyplot as plt
@@ -39,6 +40,8 @@ class Optimizer:
         self.params = self.model.params
         self.lr_scheduler = LRScheduler(self)
         self.weight_decay = 0
+        self.weight_num = 0
+        self.get_weight_num()
 
     def step(self, grads):
         for i in range(len(self.params)):
@@ -46,40 +49,52 @@ class Optimizer:
                 self.params[i][j] = self.params[i][j] - self.lr * grads[i][j]
         return self.params
 
-    def val_loss(self, model, criterion, val):
-        # val_loss
-        val_loss = 0
-        len_val = len(val)
-        val_x = []
-        for i in range(len_val):
-            predict = model.forward(val[i][0])
-            val_x.append(np.argmax(predict))
-            loss = criterion.get_loss(predict, val[i][1])
-            val_loss += loss
-        val_loss /= len_val
-        return val_loss, val_x
-
     def train(self, criterion, train, val, epochs):
         train_loss_list = []
         return train_loss_list
 
-    def l2_regularization(self):
-        weight_sum = 0
+    def get_weight_num(self):
         number = 0
         for i in range(len(self.model.params)):
             if len(self.model.params[i]) != 0:
-                weight_sum += np.sum(np.square(self.model.params[i][0]))
                 number += np.size(self.model.params[i][0])
-        return (self.weight_decay * weight_sum) / (2 * number)
+        self.weight_num = number
+
+    def l2_regularization(self):
+        weight_sum = 0
+        for i in range(len(self.model.params)):
+            if len(self.model.params[i]) != 0:
+                weight_sum += np.sum(np.square(self.model.params[i][0]))
+        return (self.weight_decay * weight_sum) / (2 * self.weight_num)
+
+    def l2_regularization_grad(self):
+        weight = copy.deepcopy(self.model.params)
+        for i in range(len(weight)):
+            if len(weight[i]) != 0:
+                weight[i][0] *= self.weight_decay / self.weight_num
+                weight[i][1] = np.zeros_like(weight[i][1])  # set bias = 0
+        return weight
 
 
 class SGD(Optimizer):
     """
     Implements stochastic gradient descent
-    :p
     """
     def __init__(self, model, batch_size, lr):
         super().__init__(model, batch_size, lr)
+
+    def val_loss(self, criterion, val):
+        # val_loss
+        val_loss = 0
+        len_val = len(val)
+        val_x = []
+        for i in range(len_val):
+            predict = self.model.forward(val[i][0])
+            val_x.append(np.argmax(predict))
+            loss = criterion.get_loss(predict, val[i][1])
+            val_loss += loss
+        val_loss /= len_val
+        return val_loss, val_x
 
     def train(self, criterion, train, val, epochs):
         """
@@ -94,28 +109,31 @@ class SGD(Optimizer):
         for epoch in range(epochs):
             start_time = time.time()
             train_loss = 0
-            print(f"Epoch {epoch + 1}/{epochs}", end=' ')
-            # self.lr_scheduler.print_lr()  # 输出学习率
+            print(f"Epoch {epoch + 1}/{epochs} ", end='| ')
             random.shuffle(train)
             batches = [train[k:k + self.batch_size] for k in range(0, len_train, self.batch_size)]
             for batch in batches:
                 for x, label in batch:
                     predict = self.model.forward(x)  # 前向传播
-                    loss = criterion.get_loss(predict, label) + self.l2_regularization()
+                    regularization_loss = self.l2_regularization()
+                    if self.weight_decay == 0:
+                        regularization_loss = 0
+                    loss = criterion.get_loss(predict, label) + regularization_loss
                     train_loss += loss
                     self.model.backward(criterion.backward())  # 反向传播
-                self.model.params = self.step(self.model.grads)
+                l2_grad = self.l2_regularization_grad()
+                new_grad = utils.nn_grad_sum(self.model.grads, l2_grad)
+                self.model.params = self.step(new_grad)
                 self.model.download_params()
                 self.model.grads = utils.nn_grad_zero(self.model.grads)
-            print(self.l2_regularization())
             train_loss_list.append(train_loss / len_train)
-            val_loss, val_x = self.val_loss(self.model, criterion, val)
+            val_loss, val_x = self.val_loss(criterion, val)
             val_loss_list.append(val_loss)
             val_label = np.array([v_data[1] for v_data in val])
             accuracy = np.sum(val_x == val_label) / np.size(val_label)
-            self.lr_scheduler.step()  # 学习率衰减
+            self.lr_scheduler.step(epoch)  # 学习率衰减
             end_time = time.time()
-            print(f"train_loss: {train_loss / len_train:.6f} | val_loss: {val_loss:.6f}"
+            print(f"train loss: {train_loss / len_train:.6f} | val loss: {val_loss:.6f}"
                   f" | acc:{accuracy * 100:.3f}%"
                   f" | time: {end_time - start_time:.3f}s")
         train_history = TrainHistory(train_loss_list, val_loss_list)
@@ -128,9 +146,8 @@ class LRScheduler:
     """
     def __init__(self, optimizer):
         self.optimizer = optimizer
-        self._epoch_num = 1
 
-    def step(self):
+    def step(self, epoch):
         self.optimizer.lr = self.optimizer.lr
 
     def print_lr(self):
@@ -142,9 +159,8 @@ class StepLR(LRScheduler):
         super().__init__(optimizer)
         self._gama = gama
 
-    def step(self):
+    def step(self, epoch):
         self.optimizer.lr *= self._gama
-        self._epoch_num += 1
 
 
 class ExponentialLR(LRScheduler):
@@ -155,9 +171,18 @@ class ExponentialLR(LRScheduler):
         super().__init__(optimizer)
         self._gama = gama
 
-    def step(self):
-        self.optimizer.lr *= self._gama ** self._epoch_num
-        self._epoch_num += 1
+    def step(self, epoch):
+        self.optimizer.lr *= self._gama ** epoch
+
+
+class CosineAnnealingLR(LRScheduler):
+    def __init__(self, optimizer, t_max: int = 1):
+        super().__init__(optimizer)
+        self._t_max = t_max
+
+    def step(self, epoch=None):
+        self.optimizer.lr *= self._gama
+
 
 
 class Adam(Optimizer):
