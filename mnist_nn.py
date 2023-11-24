@@ -1,5 +1,5 @@
 """
-MNIST手写数字识别
+正则化L1 L2
 """
 
 import numpy as np
@@ -18,6 +18,8 @@ class NeuralNetwork(nn.Module):
     def __init__(self):
         super().__init__()
         self.layers = [nn.Linear(784, 10),
+                       # nn.Sigmoid(),
+                       # nn.Linear(20, 10),
                        nn.CrossEntropyLoss(False)]
         self.init()
 
@@ -27,8 +29,8 @@ def main():
     criterion = nn.CrossEntropyLoss()
     model = NeuralNetwork()
     optimizer = optim.SGD(model, BATCH_SIZE, LR)
-    optimizer.lr_scheduler = optim.ExponentialLR(optimizer, 0.95)  # 设置学习率衰减
-    optimizer.weight_decay = L2_LAMBDA  # 设置L2正则化
+    # optimizer.lr_scheduler = optim.ExponentialLR(optimizer, 0.95)  # 设置学习率衰减
+    # optimizer.weight_decay = 1  # 设置L2正则化
     loss = optimizer.train(criterion, training_data, validation_data, EPOCHS)  # 训练
     # 测试
     test_x = np.array([model.forward(i[0]) for i in test_data])
@@ -39,22 +41,21 @@ def main():
     accuracy = np.trace(confusion_matrix) / np.sum(confusion_matrix)
     # 输出训练信息
     loss.plot_loss()
+    loss.plot_acc()
     print(confusion_matrix)
     print(f"训练数据量: {len(training_data)}\n"
           f"验证数据量: {len(validation_data)}\n"
           f"测试数据量: {len(test_label)}\n"
           f"EPOCHS = {EPOCHS}\n"
           f"LR = {LR}\n"
-          f"Accuracy: {accuracy * 100:.6f}%\n")
+          f"Accuracy: {accuracy * 100:.3f}%\n")
 
 
 if __name__ == "__main__":
     np.set_printoptions(suppress=True)
-    EPOCHS = 10
+    EPOCHS = 100
     BATCH_SIZE = 100000
     LR = 1e-1
-    L2_LAMBDA = 1e-4
-    # L2_LAMBDA = 0
     training_data, validation_data, test_data = mnist_loader.load_data_wrapper()
     print("Dataset loaded")
     main()
