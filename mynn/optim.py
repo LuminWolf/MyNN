@@ -1,4 +1,5 @@
 import time
+import copy
 import random
 
 import numpy as np
@@ -44,6 +45,15 @@ class Optimizer:
         self.params = self.model.params
         self.lr_scheduler = LRScheduler(self)
         self.weight_decay = 0
+        self.weight_num = 0
+        self.get_weight_num()
+
+    def get_weight_num(self):
+        number = 0
+        for i in range(len(self.model.params)):
+            if len(self.model.params[i]) != 0:
+                number += np.size(self.model.params[i][0])
+        self.weight_num = number
 
     def step(self, grads):
         for i in range(len(self.params)):
@@ -51,7 +61,7 @@ class Optimizer:
                 self.params[i][j] = self.params[i][j] - self.lr * grads[i][j]
         return self.params
 
-    def val_loss(self, model, criterion, val):
+    def val_loss(self, criterion, val):
         val_loss = 0
         len_val = len(val)
         val_label = []
@@ -60,8 +70,8 @@ class Optimizer:
         val_label = data.onehot_encoder(10, val_label)
         acc_num = 0
         for i in range(len_val):
-            predict = model.forward(val[i][0])
-            loss = criterion.get_loss(predict, val_label[i])
+            predict = self.model.forward(val[i][0])
+            loss = criterion.get_loss(predict, val_label[i]) + self.l2_regularization_loss()
             if np.argmax(val_label[i]) == np.argmax(predict):
                 acc_num += 1
             val_loss += loss
@@ -73,14 +83,28 @@ class Optimizer:
         train_loss_list = []
         return train_loss_list
 
-    def l2_regularization(self):
+    def l2_regularization_loss(self) -> float:
+        """
+        Calculate the L2 regularization term.
+        :return: L2 regularization term.
+        """
         weight_sum = 0
-        number = 0
         for i in range(len(self.model.params)):
             if len(self.model.params[i]) != 0:
                 weight_sum += np.sum(np.square(self.model.params[i][0]))
-                number += np.size(self.model.params[i][0])
-        return (self.weight_decay * weight_sum) / (2 * number)
+        loss = (self.weight_decay * weight_sum) / (2 * self.weight_num)
+        return loss
+
+    def l2_regularization_grad(self):
+        """
+        Calculate the gradient of the L2 regularization term.
+        """
+        weight = copy.deepcopy(self.model.params)
+        for i in range(len(weight)):
+            if len(weight[i]) != 0:
+                weight[i][0] *= self.weight_decay / self.weight_num
+                weight[i][1] = np.zeros_like(weight[i][1])  # set bias = 0
+        return weight
 
 
 class SGD(Optimizer):
@@ -114,23 +138,23 @@ class SGD(Optimizer):
             for batch in batches:
                 for x, label in batch:
                     predict = self.model.forward(x)  # 前向传播
-                    # loss = criterion.get_loss(predict, label) + self.l2_regularization()
-                    loss = criterion.get_loss(predict, label)
+                    loss = criterion.get_loss(predict, label) + self.l2_regularization_loss()
+                    # loss = criterion.get_loss(predict, label)
                     if np.argmax(label) == np.argmax(predict):
                         acc_num += 1
                     train_loss += loss
                     self.model.backward(criterion.backward())  # 反向传播
+                    # self.model.grads = utils.nn_grad_sum(self.l2_regularization_grad(), self.model.grads)
                 self.model.params = self.step(self.model.grads)
                 self.model.download_params()
                 self.model.grads = utils.nn_grad_zero(self.model.grads)
-            # print(self.l2_regularization())
+            train_acc = acc_num / len_train
+            train_acc_list.append(train_acc)
             train_loss_list.append(train_loss / len_train)
-            val_loss, val_acc = self.val_loss(self.model, criterion, val)
+            val_loss, val_acc = self.val_loss(criterion, val)
             val_acc_list.append(val_acc)
             val_loss_list.append(val_loss)
             self.lr_scheduler.step()  # 学习率衰减
-            train_acc = acc_num / len_train
-            train_acc_list.append(train_acc)
             end_time = time.time()
             print(f"|time: {end_time - start_time:.2f}s")
             """

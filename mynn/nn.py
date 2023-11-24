@@ -168,7 +168,6 @@ class CrossEntropyLoss(Loss):
         return self.predict
 
     def backward(self, dout=None):
-        grad = None
         if self.isloss:
             grad = self.predict - self.label
         else:
