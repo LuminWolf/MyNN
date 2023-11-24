@@ -1,11 +1,6 @@
 import numpy as np
 
 
-class Grad:
-    def __init__(self):
-        pass
-
-
 def softmax(x):
     shiftx = x - np.max(x)
     exps = np.exp(shiftx)

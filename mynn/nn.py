@@ -72,19 +72,11 @@ class Sigmoid(Layer):
 class Linear(Layer):
     def __init__(self, in_features, out_features):
         super().__init__()
-        self.xavier_init(in_features, out_features)
+        self.init_params(in_features, out_features)
         self.grads = [np.zeros_like(self.params[0]), np.zeros_like(self.params[1])]
         self.x = None
 
-    def xavier_init(self, in_features, out_features):
-        high = np.sqrt(6/(in_features+out_features))
-        # scale = 2 / (in_features+out_features)
-        # weight = np.random.normal(0, scale, size=(in_features, out_features))
-        weight = np.random.uniform(-high, high, (in_features, out_features))
-        bias = np.zeros((out_features,))
-        self.params = [weight, bias]
-
-    def he_init(self, in_features, out_features):
+    def init_params(self, in_features, out_features):
         weight = np.random.normal(size=(in_features, out_features))
         bias = np.random.normal((out_features,))
         self.params = [weight, bias]
@@ -98,7 +90,6 @@ class Linear(Layer):
     def backward(self, grad):
         w, b = self.params
         dx = np.dot(grad, w.T)
-        # 梯度消失
         dw = np.outer(self.x.T, grad)
         db = np.sum(grad, axis=0)
         # 梯度累加
