@@ -76,8 +76,12 @@ class Linear(Layer):
         self.grads = [np.zeros_like(self.params[0]), np.zeros_like(self.params[1])]
         self.x = None
 
+    def kaiming_uniform(self, in_features, out_features):
+        weight = np.random.normal(0, 2 / out_features, (in_features, out_features))
+        return weight
+
     def init_params(self, in_features, out_features):
-        weight = np.random.normal(size=(in_features, out_features))
+        weight = self.kaiming_uniform(in_features, out_features)
         bias = np.random.normal((out_features,))
         self.params = [weight, bias]
 
@@ -148,7 +152,6 @@ class CrossEntropyLoss(Loss):
         :param isloss: 是否为损失函数,False代表其为softmax激活函数
         """
         super().__init__()
-        # self.out = None
         self.isloss = isloss
 
     def get_loss(self, predict, label):
@@ -158,9 +161,9 @@ class CrossEntropyLoss(Loss):
         :return: 损失值
         """
         # self.predicted = utils.softmax(predict)
-        self.predict = predict
+        self.predict = np.clip(predict, a_min=1e-8, a_max=None)
         self.label = label
-        out = -np.sum(np.log(self.predict + 1e-6) * label)
+        out = -np.sum(np.log(self.predict) * label) / len(self.predict)
         return out
 
     def forward(self, x):

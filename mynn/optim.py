@@ -47,6 +47,7 @@ class Optimizer:
         self.weight_decay = 0
         self.weight_num = 0
         self.get_weight_num()
+        self._earlystop_accnum = 0
 
     def get_weight_num(self):
         number = 0
@@ -156,14 +157,11 @@ class SGD(Optimizer):
             val_loss_list.append(val_loss)
             self.lr_scheduler.step()  # 学习率衰减
             end_time = time.time()
-            print(f"|time: {end_time - start_time:.2f}s")
-            """
+            print(f"|time: {end_time - start_time:.2f}s"
                   f"|train_loss: {train_loss / len_train:.3f}"
                   f"|train_acc: {train_acc * 100:.2f}%"
                   f"|val_loss: {val_loss:.3f}"
-                  f"|val_acc: {val_acc * 100:.2f}%"
-            """
-
+                  f"|val_acc: {val_acc * 100:.2f}%")
         train_history = TrainHistory(train_loss_list, val_loss_list, train_acc_list, val_acc_list)
         return train_history
 
