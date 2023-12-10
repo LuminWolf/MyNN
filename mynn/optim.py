@@ -1,3 +1,10 @@
+"""
+实现DataLoader, 修复val loss的bug
+Batch size事实上始终为1?
+优化循环嵌套
+"""
+
+
 import time
 import copy
 import random
@@ -95,7 +102,7 @@ class Optimizer:
                 weight_sum += np.sum(np.square(self.model.params[i][0]))
         loss = (self.weight_decay * weight_sum) / (2 * self.weight_num)
         return loss
-
+    
     def l2_regularization_grad(self):
         """
         Calculate the gradient of the L2 regularization term.
@@ -115,12 +122,33 @@ class SGD(Optimizer):
     """
     def __init__(self, model, batch_size, lr):
         super().__init__(model, batch_size, lr)
-
+    
+    
+    def iteration(self, criterion, train):
+        train_loss = 0
+        acc_num = 0
+        for batch in train:
+            for x, label in batch:
+                predict = self.model.forward(x)  # 前向传播
+                l2_loss = self.l2_regularization_loss()
+                criterion_loss = criterion.get_loss(predict, label)
+                loss = criterion_loss + l2_loss
+                if np.argmax(label) == np.argmax(predict):
+                    acc_num += 1
+                train_loss += loss
+                self.model.backward(criterion.backward())  # 反向传播
+                # self.model.grads = utils.nn_grad_sum(self.l2_regularization_grad(), self.model.grads)
+            self.model.params = self.step(self.model.grads)
+            self.model.download_params()
+            self.model.grads = utils.nn_grad_zero(self.model.grads)
+        return train_loss, acc_num
+    
+    
     def train(self, criterion, train, val, epochs):
         """
         :param criterion: loss function
-        :param val: tuple of training data
-        :param train: tuple of training data
+        :param val: DataLoader of validation data
+        :param train: DataLoader of training data
         :param epochs: number of epoch
         """
         len_train = len(train)
@@ -130,17 +158,15 @@ class SGD(Optimizer):
         val_acc_list = []
         for epoch in range(epochs):
             start_time = time.time()
-            train_loss = 0
             print(f"Epoch {epoch + 1}/{epochs}", end='')
-            # self.lr_scheduler.print_lr()  # 输出学习率
-            random.shuffle(train)
-            batches = [train[k:k + self.batch_size] for k in range(0, len_train, self.batch_size)]
+            train_loss = 0
             acc_num = 0
-            for batch in batches:
+            for batch in train:
                 for x, label in batch:
                     predict = self.model.forward(x)  # 前向传播
-                    loss = criterion.get_loss(predict, label) + self.l2_regularization_loss()
-                    # loss = criterion.get_loss(predict, label)
+                    l2_loss = self.l2_regularization_loss()
+                    criterion_loss = criterion.get_loss(predict, label)
+                    loss = criterion_loss + l2_loss
                     if np.argmax(label) == np.argmax(predict):
                         acc_num += 1
                     train_loss += loss

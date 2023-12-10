@@ -120,6 +120,28 @@ class Loss(Layer):
 
     def backward(self, dout=None):
         return None
+    
+    def get_val_loss() -> float: 
+        """
+            def val_loss(self, criterion, val):
+        val_loss = 0
+        len_val = len(val)
+        val_label = []
+        for sample in val:
+            val_label.append(sample[1])
+        val_label = data.onehot_encoder(10, val_label)
+        acc_num = 0
+        for i in range(len_val):
+            predict = self.model.forward(val[i][0])
+            loss = criterion.get_loss(predict, val_label[i]) + self.l2_regularization_loss()
+            if np.argmax(val_label[i]) == np.argmax(predict):
+                acc_num += 1
+            val_loss += loss
+        val_loss /= len_val
+        acc = acc_num / len_val
+        return val_loss, acc
+        """    
+        pass
 
 
 class MSELoss(Loss):
