@@ -33,6 +33,7 @@ class DataLoaderIter:
         self.count += 1
         return batch
 
+
 class DataLoader:
     """
     数据集 iterable  向模型输入数据
@@ -63,9 +64,11 @@ def normalize(x):
     return (x - mini) / np.max(x) - mini
 
 
-def onehot_encoder(num, y_label):
+def onehot_encoder(num: int, y_label):
     """
+    :param num: number of classes
     :param y_label: list of int
+    :return: onehot: list of array
     """
     # classification = np.unique(y_label)
     # num = len(classification)

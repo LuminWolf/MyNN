@@ -1,4 +1,0 @@
-        self.layers = [nn.Linear(784, 30),
-                       nn.Sigmoid(),
-                       nn.Linear(30, 10),
-                       nn.CrossEntropyLoss(False)]

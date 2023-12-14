@@ -5,7 +5,6 @@ def softmax(x):
     shiftx = x - np.max(x)
     exps = np.exp(shiftx)
     return exps / np.sum(exps)
-    # return np.exp(x) / np.sum(np.exp(x))
 
 
 def nn_grad_sum(grad1, grad2):

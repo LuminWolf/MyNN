@@ -1,5 +1,4 @@
 import numpy as np
-import matplotlib.pyplot as plt
 
 import mnist_loader
 
@@ -18,6 +17,7 @@ class NeuralNetwork(nn.Module):
         self.layers = [nn.Linear(784, 10),
                        nn.CrossEntropyLoss(False)]
         self.init()
+
 
 def train(parameter) -> optim.TrainHistory:
     model = NeuralNetwork()
@@ -47,24 +47,20 @@ def model_test(model, loss):
     
 
 def main():
-    loss = train(0)
-    loss.plot_loss()
-    """
     # criterion = nn.MSELoss()
-    # model = NeuralNetwork()
-    # criterion = nn.CrossEntropyLoss()  # 交叉熵损失函数
-    # optimizer = optim.SGD(model, BATCH_SIZE, LR)  # 随机梯度下降
-    # optimizer.lr_scheduler = optim.ExponentialLR(optimizer, 0.99)  # 设置学习率衰减
-    # optimizer.weight_decay = L2_LAMBDA  # 设置L2正则化
-    # loss = optimizer.train(criterion, training_data, validation_data, EPOCHS)  # 训练
-    """
+    model = NeuralNetwork()
+    criterion = nn.CrossEntropyLoss()  # 交叉熵损失函数
+    optimizer = optim.SGD(model, BATCH_SIZE, LR)  # 随机梯度下降
+    optimizer.lr_scheduler = optim.ExponentialLR(optimizer, 0.99)  # 设置学习率衰减
+    optimizer.weight_decay = L2_LAMBDA  # 设置L2正则化
+    train_history = optimizer.train(criterion, training_data, validation_data, EPOCHS)  # 训练
+    train_history.plot_loss()
+
     """
     parameter_list = [1e-2, 1e-3, 1e-4]
     loss_list = [] # 1e-1, 1e-2, 1e-3, 1e-4
     for i in range(len(parameter_list)):
         loss_list.append(train(parameter_list[i]))
-        
-    
     # 绘制训练信息
     fig, ax = plt.subplots()
     ax.set_xlabel("Eppochs")
@@ -76,12 +72,13 @@ def main():
     plt.show()
     """
 
+
 if __name__ == "__main__":
     np.set_printoptions(suppress=True)
     EPOCHS = 16
     BATCH_SIZE = 50000
     LR = 2e-5
-    L2_LAMBDA = 1e-4
+    L2_LAMBDA = 1e-5
     training_data, validation_data, test_data = mnist_loader.load_data_wrapper()
     print("Dataset loaded")
     main()
