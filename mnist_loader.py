@@ -19,7 +19,7 @@ import pickle
 import gzip
 
 # Third-party libraries
-import numpy as np
+import cupy as cp
 
 def load_data():
     """Return the MNIST data as a tuple containing the training data,
@@ -64,12 +64,12 @@ def load_data_wrapper():
     turn out to be the most convenient for use in our neural network
     code."""
     tr_d, va_d, te_d = load_data()
-    training_inputs = [np.reshape(x, (784, )) for x in tr_d[0]]
-    training_results = [vectorized_result(y) for y in tr_d[1]]
+    training_inputs = [cp.array(cp.reshape(x, (784, ))) for x in tr_d[0]]
+    training_results = [cp.array(vectorized_result(y)) for y in tr_d[1]]
     training_data = list(zip(training_inputs, training_results))
-    validation_inputs = [np.reshape(x, (784, )) for x in va_d[0]]
+    validation_inputs = [cp.array(cp.reshape(x, (784, ))) for x in va_d[0]]
     validation_data = list(zip(validation_inputs, va_d[1]))
-    test_inputs = [np.reshape(x, (784, )) for x in te_d[0]]
+    test_inputs = [cp.array(cp.reshape(x, (784, ))) for x in te_d[0]]
     test_data = list(zip(test_inputs, te_d[1]))
     return (training_data, validation_data, test_data)
 
@@ -78,7 +78,7 @@ def vectorized_result(j):
     position and zeroes elsewhere.  This is used to convert a digit
     (0...9) into a corresponding desired output from the neural
     network."""
-    e = np.zeros((10, ))
+    e = cp.zeros((10, ))
     e[j] = 1.0
     return e
 

@@ -1,10 +1,10 @@
-import numpy as np
+# import numpy as np
 
 import mnist_loader
 
 from mynn import nn
 from mynn import data
-from mynn import metrics
+# from mynn import metrics
 from mynn import optim
 
 
@@ -14,7 +14,9 @@ class NeuralNetwork(nn.Module):
     """
     def __init__(self):
         super().__init__()
-        self.layers = [nn.Linear(784, 10),
+        self.layers = [nn.Linear(784, 20),
+                       nn.Sigmoid(),
+                       nn.Linear(20, 10),
                        nn.CrossEntropyLoss(False)]
         self.init()
 
@@ -28,23 +30,7 @@ def train(parameter) -> optim.TrainHistory:
     val = data.DataLoader(validation_data, BATCH_SIZE)
     loss = optimizer.train(criterion, train, validation_data, EPOCHS)
     return loss
-   
-    
-def model_test(model, loss):
-    test_x = np.array([model.forward(i[0]) for i in test_data])  # 测试
-    test_x = np.argmax(test_x, axis=1)
-    test_label = np.array([t_data[1] for t_data in test_data])
-    confusion_matrix = metrics.get_confusion_matrix(test_x, test_label)  # 绘制混淆矩阵
-    accuracy = np.trace(confusion_matrix) / np.sum(confusion_matrix)
-    loss.plot_loss()  # 输出训练信息
-    loss.plot_acc()
-    print(confusion_matrix)
-    print(f"训练数据量: {len(training_data)}\n"
-          f"验证数据量: {len(validation_data)}\n"
-          f"测试数据量: {len(test_label)}\n"
-          f"EPOCHS = {EPOCHS}\n"
-          f"Accuracy: {accuracy * 100:.3f}%\n")
-    
+
 
 def main():
     # criterion = nn.MSELoss()
@@ -74,7 +60,7 @@ def main():
 
 
 if __name__ == "__main__":
-    np.set_printoptions(suppress=True)
+    # np.set_printoptions(suppress=True)
     EPOCHS = 16
     BATCH_SIZE = 50000
     LR = 2e-5

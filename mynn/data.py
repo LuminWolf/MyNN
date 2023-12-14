@@ -1,6 +1,6 @@
 import random
 
-import numpy as np
+import cupy as cp
 
 
 class Dataset:
@@ -60,8 +60,8 @@ class DataLoader:
 
 
 def normalize(x):
-    mini = np.min(x)
-    return (x - mini) / np.max(x) - mini
+    mini = cp.min(x)
+    return (x - mini) / cp.max(x) - mini
 
 
 def onehot_encoder(num: int, y_label):
@@ -74,10 +74,10 @@ def onehot_encoder(num: int, y_label):
     # num = len(classification)
     onehot = []
     for y in y_label:
-        y_zero = np.zeros((num,))
+        y_zero = cp.zeros((num,))
         y_zero[y] = 1
         onehot.append(y_zero)
-    return np.array(onehot)
+    return cp.array(onehot)
 
 
 # def dataset_split(dataset, train_percent, val_percent, istest):

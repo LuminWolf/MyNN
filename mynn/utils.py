@@ -1,10 +1,10 @@
-import numpy as np
+import cupy as cp
 
 
 def softmax(x):
-    shiftx = x - np.max(x)
-    exps = np.exp(shiftx)
-    return exps / np.sum(exps)
+    shiftx = x - cp.max(x)
+    exps = cp.exp(shiftx)
+    return exps / cp.sum(exps)
 
 
 def nn_grad_sum(grad1, grad2):
@@ -31,5 +31,5 @@ def layer_grad_sum(grad1, grad2):
 def nn_grad_zero(grad):
     for layer_num in range(len(grad)):
         for i in range(len(grad[layer_num])):
-            grad[layer_num][i] = np.zeros_like(grad[layer_num][i])
+            grad[layer_num][i] = cp.zeros_like(grad[layer_num][i])
     return grad

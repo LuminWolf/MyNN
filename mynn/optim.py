@@ -8,7 +8,7 @@ Batch size事实上始终为1?
 import time
 import copy
 
-import numpy as np
+import cupy as cp
 import matplotlib.pyplot as plt
 
 from . import utils
@@ -59,7 +59,7 @@ class Optimizer:
         number = 0
         for i in range(len(self.model.params)):
             if len(self.model.params[i]) != 0:
-                number += np.size(self.model.params[i][0])
+                number += cp.size(self.model.params[i][0])
         self.weight_num = number
 
     def step(self, grads):
@@ -79,7 +79,7 @@ class Optimizer:
         for i in range(len_val):
             predict = self.model.forward(val[i][0])
             loss = criterion.get_loss(predict, val_label[i]) + self.l2_regularization_loss()
-            if np.argmax(val_label[i]) == np.argmax(predict):
+            if cp.argmax(val_label[i]) == cp.argmax(predict):
                 acc_num += 1
             val_loss += loss
         val_loss /= len_val
@@ -98,7 +98,7 @@ class Optimizer:
         weight_sum = 0
         for i in range(len(self.model.params)):
             if len(self.model.params[i]) != 0:
-                weight_sum += np.sum(np.square(self.model.params[i][0]))
+                weight_sum += cp.sum(cp.square(self.model.params[i][0]))
         loss = (self.weight_decay * weight_sum) / (2 * self.weight_num)
         return loss
     
@@ -110,7 +110,7 @@ class Optimizer:
         for i in range(len(weight)):
             if len(weight[i]) != 0:
                 weight[i][0] *= self.weight_decay / self.weight_num
-                weight[i][1] = np.zeros_like(weight[i][1])  # set bias = 0
+                weight[i][1] = cp.zeros_like(weight[i][1])  # set bias = 0
         return weight
 
 
@@ -130,7 +130,7 @@ class SGD(Optimizer):
                 l2_loss = self.l2_regularization_loss()
                 criterion_loss = criterion.get_loss(predict, label)
                 loss = criterion_loss + l2_loss
-                if np.argmax(label) == np.argmax(predict):
+                if cp.argmax(label) == cp.argmax(predict):
                     acc_num += 1
                 train_loss += loss
                 self.model.backward(criterion.backward())  # 反向传播
@@ -161,7 +161,7 @@ class SGD(Optimizer):
                 l2_loss = self.l2_regularization_loss()
                 criterion_loss = criterion.get_loss(predict, label)
                 loss = criterion_loss + l2_loss
-                if np.argmax(label) == np.argmax(predict):
+                if cp.argmax(label) == cp.argmax(predict):
                     acc_num += 1
                 train_loss += loss
                 self.model.backward(criterion.backward())  # 反向传播

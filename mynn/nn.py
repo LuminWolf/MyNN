@@ -3,9 +3,8 @@
 2.Residual Block
 3.Kaiming初始化, Xavier初始化
 """
-
-
-import numpy as np
+import cupy
+import cupy as cp
 
 from . import utils
 
@@ -22,14 +21,14 @@ class ReLU(Layer):
         self.out = None
 
     def forward(self, x):
-        out = np.maximum(0, x)
+        out = cp.maximum(0, x)
         self.out = out
         return out
 
     def backward(self, dout):
         grad = self.out.copy()
-        grad[grad > 0] = 1
-        grad[grad < 0] = 0
+        grad[grad > 0] = 1.0
+        grad[grad < 0] = 0.0
         dx = dout * grad
         return dx
 
@@ -41,7 +40,7 @@ class LeakyReLU(Layer):
         self.negative_slope = negative_slope
 
     def forward(self, x):
-        out = np.maximum(self.negative_slope * x, x)
+        out = cp.maximum(self.negative_slope * x, x)
         self.out = out
         return out
 
@@ -59,43 +58,43 @@ class Sigmoid(Layer):
         self.out = None
 
     def forward(self, x):
-        out = 1 / (1 + np.exp(-x))
+        out = 1 / (1 + cp.exp(-x))
         self.out = out
         return out
 
     def backward(self, grad):
         sigmoid_grad = self.out * (1 - self.out)
-        out = grad * sigmoid_grad
-        return out
+        return grad * sigmoid_grad
 
 
 class Linear(Layer):
     def __init__(self, in_features, out_features):
         super().__init__()
         self.init_params(in_features, out_features)
-        self.grads = [np.zeros_like(self.params[0]), np.zeros_like(self.params[1])]
+        self.grads = [cp.zeros_like(self.params[0]), cp.zeros_like(self.params[1])]
         self.x = None
 
-    def kaiming_uniform(self, in_features, out_features):
-        weight = np.random.normal(0, 2 / out_features, (in_features, out_features))
+    @staticmethod
+    def kaiming_uniform(in_features, out_features):
+        weight = cp.random.normal(0, 2 / out_features, (in_features, out_features))
         return weight
 
     def init_params(self, in_features, out_features):
         weight = self.kaiming_uniform(in_features, out_features)
-        bias = np.random.normal((out_features,))
+        bias = cp.random.normal(size=(out_features,))
         self.params = [weight, bias]
 
     def forward(self, x):
         w, b = self.params
-        out = np.dot(x, w) + b
+        out = cp.dot(x, w) + b
         self.x = x
         return out
 
     def backward(self, grad):
         w, b = self.params
-        dx = np.dot(grad, w.T)
-        dw = np.outer(self.x.T, grad)
-        db = np.sum(grad, axis=0)
+        dx = cp.dot(grad, w.T)
+        dw = cp.outer(self.x.T, grad)
+        db = cp.sum(grad, axis=0)
         # 梯度累加
         grad = utils.layer_grad_sum(self.grads, [dw, db])
         self.grads[0][...] = grad[0]
@@ -120,28 +119,6 @@ class Loss(Layer):
 
     def backward(self, dout=None):
         return None
-    
-    def get_val_loss() -> float: 
-        """
-            def val_loss(self, criterion, val):
-        val_loss = 0
-        len_val = len(val)
-        val_label = []
-        for sample in val:
-            val_label.append(sample[1])
-        val_label = data.onehot_encoder(10, val_label)
-        acc_num = 0
-        for i in range(len_val):
-            predict = self.model.forward(val[i][0])
-            loss = criterion.get_loss(predict, val_label[i]) + self.l2_regularization_loss()
-            if np.argmax(val_label[i]) == np.argmax(predict):
-                acc_num += 1
-            val_loss += loss
-        val_loss /= len_val
-        acc = acc_num / len_val
-        return val_loss, acc
-        """    
-        pass
 
 
 class MSELoss(Loss):
@@ -156,7 +133,7 @@ class MSELoss(Loss):
     def get_loss(self, predict, label):
         self.predict = predict
         self.label = label
-        out = (np.sum(np.square(label - predict)) / np.size(label))
+        out = (cp.sum(cp.square(label - predict)) / cp.size(label))
         return out
 
     def backward(self, dout=None):
@@ -183,9 +160,9 @@ class CrossEntropyLoss(Loss):
         :return: 损失值
         """
         # self.predicted = utils.softmax(predict)
-        self.predict = np.clip(predict, a_min=1e-8, a_max=None)
+        self.predict = cp.clip(predict, a_min=1e-8, a_max=None)
         self.label = label
-        out = -np.sum(np.log(self.predict) * label) / len(self.predict)
+        out = -cp.sum(cp.log(self.predict) * label) / len(self.predict)
         return out
 
     def forward(self, x):
